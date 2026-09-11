@@ -608,7 +608,7 @@ def get_order(order_id):
     order = Order.query.get_or_404(order_id)
     if not current_user.is_admin and order.user_id != current_user.id:
         return response(error="forbidden", message="Access denied", status=403)
-    return response(data=order_payload(order, include_sensitive=(current_user.is_admin or order.user_id == current_user.id)))
+    return response(data=order_payload(order, include_sensitive=(order.user_id == current_user.id)))
 
 
 @api_bp.get("/books/<int:book_id>/reviews")
@@ -656,7 +656,10 @@ def update_review(review_id):
             return response(error="validation_error", message="rating must be 1-5", status=400)
         review.rating = rating
     if "comment" in payload:
-        review.comment = (payload["comment"] or "").strip()
+        comment = (payload["comment"] or "").strip()
+        if not comment:
+            return response(error="validation_error", message="comment cannot be empty", status=400)
+        review.comment = comment
 
     db.session.commit()
     return response(data=review_payload(review), message="Review updated")

@@ -10,6 +10,7 @@
     <option value="{{ category.id }}" {% if selected == category.id %}selected{% endif %}>{{ category.name }}</option>
     {% endfor %}
   </select>
+  <button type="submit">Apply filter</button>
 </form>
 <div class="grid">
   {% for book in books %}

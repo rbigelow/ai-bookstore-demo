@@ -94,6 +94,10 @@ def test_admin_order_list_redacts_sensitive_fields(client):
         json={"shipping_address": "456 Buyer Lane", "payment_method": "mock", "payment_token": "tok_admincheck"},
     )
     order_id = created.get_json()["data"]["id"]
+    owner_detail = client.get(f"/api/orders/{order_id}")
+    assert owner_detail.status_code == 200
+    assert "shipping_address" in owner_detail.get_json()["data"]
+    assert "payment_reference" in owner_detail.get_json()["data"]
     client.post("/api/users/logout")
 
     client.post(
@@ -108,5 +112,10 @@ def test_admin_order_list_redacts_sensitive_fields(client):
 
     detail_resp = client.get(f"/api/orders/{order_id}")
     assert detail_resp.status_code == 200
-    assert "shipping_address" in detail_resp.get_json()["data"]
-    assert "payment_reference" in detail_resp.get_json()["data"]
+    assert "shipping_address" not in detail_resp.get_json()["data"]
+    assert "payment_reference" not in detail_resp.get_json()["data"]
+    client.post("/api/users/logout")
+
+    register_and_login(client, email="other@example.com")
+    forbidden = client.get(f"/api/orders/{order_id}")
+    assert forbidden.status_code == 403
