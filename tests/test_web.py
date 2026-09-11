@@ -19,3 +19,27 @@ def test_orders_page_for_authenticated_user(client):
     response = client.get('/orders')
     assert response.status_code == 200
     assert b'Orders' in response.data
+
+
+def test_web_register_post_creates_user(client):
+    response = client.post(
+        "/register",
+        data={"full_name": "Web Reg", "email": "webreg@example.com", "password": "Pass123!"},
+        follow_redirects=True,
+    )
+    assert response.status_code == 200
+    assert b"Registration successful" in response.data
+
+
+def test_web_login_post_authenticates_user(client):
+    client.post(
+        "/api/users/register",
+        json={"email": "weblogin@example.com", "password": "Pass123!", "full_name": "Web Login"},
+    )
+    response = client.post(
+        "/login",
+        data={"email": "weblogin@example.com", "password": "Pass123!"},
+        follow_redirects=True,
+    )
+    assert response.status_code == 200
+    assert b"Welcome back!" in response.data

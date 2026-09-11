@@ -555,7 +555,7 @@ def create_order():
     db.session.add(order)
     db.session.flush()
 
-    for cart_item in current_user.cart_items:
+    for cart_item in list(current_user.cart_items):
         affected = (
             Book.query.filter(Book.id == cart_item.book_id, Book.stock_quantity >= cart_item.quantity)
             .update({Book.stock_quantity: Book.stock_quantity - cart_item.quantity}, synchronize_session=False)

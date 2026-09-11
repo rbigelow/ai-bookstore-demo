@@ -147,7 +147,7 @@ def checkout():
         )
         db.session.add(order)
         db.session.flush()
-        for item in current_user.cart_items:
+        for item in list(current_user.cart_items):
             affected = (
                 Book.query.filter(Book.id == item.book_id, Book.stock_quantity >= item.quantity)
                 .update({Book.stock_quantity: Book.stock_quantity - item.quantity}, synchronize_session=False)

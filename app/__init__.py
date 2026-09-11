@@ -47,9 +47,15 @@ def create_app(config_object=Config):
     @app.context_processor
     def inject_helpers():
         def lang_url(lang):
+            endpoint = request.endpoint
+            if not endpoint:
+                return url_for("web.home", lang=lang)
+            rules = [rule for rule in app.url_map.iter_rules(endpoint) if "GET" in rule.methods]
+            if not rules:
+                return url_for("web.home", lang=lang)
             args = request.args.to_dict(flat=True)
             args["lang"] = lang
-            return url_for(request.endpoint or "web.home", **(request.view_args or {}), **args)
+            return url_for(endpoint, **(request.view_args or {}), **args)
 
         return {"lang_url": lang_url}
 
