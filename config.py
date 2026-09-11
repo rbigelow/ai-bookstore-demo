@@ -1,9 +1,10 @@
 import os
+import secrets
 from datetime import timedelta
 
 
 class Config:
-    SECRET_KEY = os.getenv("SECRET_KEY", "dev-secret-change-me")
+    SECRET_KEY = os.getenv("SECRET_KEY") or secrets.token_urlsafe(32)
     SQLALCHEMY_DATABASE_URI = os.getenv("DATABASE_URL", "sqlite:///bookstore.db")
     SQLALCHEMY_TRACK_MODIFICATIONS = False
 

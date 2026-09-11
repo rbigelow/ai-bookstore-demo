@@ -2,7 +2,7 @@ from decimal import Decimal
 
 from flask import Blueprint, jsonify, request, session
 from flask_login import current_user, login_required, login_user, logout_user
-from sqlalchemy import asc, desc
+from sqlalchemy import asc, desc, func
 
 from app.extensions import db
 from app.models import (
@@ -35,9 +35,26 @@ def admin_required():
 
 
 def parse_pagination():
-    page = max(int(request.args.get("page", 1)), 1)
-    per_page = min(max(int(request.args.get("per_page", 10)), 1), 50)
-    return page, per_page
+    try:
+        page = max(int(request.args.get("page", 1)), 1)
+        per_page = min(max(int(request.args.get("per_page", 10)), 1), 50)
+    except ValueError:
+        return None, None, response(error="validation_error", message="page and per_page must be integers", status=400)
+    return page, per_page, None
+
+
+def parse_int(value, field_name):
+    try:
+        return int(value), None
+    except (TypeError, ValueError):
+        return None, response(error="validation_error", message=f"{field_name} must be an integer", status=400)
+
+
+def parse_decimal(value, field_name):
+    try:
+        return Decimal(str(value)), None
+    except Exception:
+        return None, response(error="validation_error", message=f"{field_name} must be a number", status=400)
 
 
 def user_payload(user):
@@ -105,14 +122,12 @@ def cart_payload(user):
     return {"items": items, "total": float(total)}
 
 
-def order_payload(order):
-    return {
+def order_payload(order, include_sensitive=False):
+    payload = {
         "id": order.id,
         "user_id": order.user_id,
         "status": order.status,
         "total_amount": float(order.total_amount),
-        "shipping_address": order.shipping_address,
-        "payment_reference": order.payment_reference,
         "created_at": order.created_at.isoformat(),
         "items": [
             {
@@ -125,6 +140,10 @@ def order_payload(order):
             for item in order.items
         ],
     }
+    if include_sensitive:
+        payload["shipping_address"] = order.shipping_address
+        payload["payment_reference"] = order.payment_reference
+    return payload
 
 
 @api_bp.post("/users/register")
@@ -226,7 +245,9 @@ def list_users():
     error = admin_required()
     if error:
         return error
-    page, per_page = parse_pagination()
+    page, per_page, pagination_error = parse_pagination()
+    if pagination_error:
+        return pagination_error
     paginated = User.query.order_by(User.created_at.desc()).paginate(page=page, per_page=per_page, error_out=False)
     return response(
         data={
@@ -299,20 +320,36 @@ def delete_category(category_id):
 
 @api_bp.get("/books")
 def list_books():
-    page, per_page = parse_pagination()
+    page, per_page, pagination_error = parse_pagination()
+    if pagination_error:
+        return pagination_error
     query = Book.query
 
     if request.args.get("q"):
         term = f"%{request.args['q'].strip()}%"
         query = query.filter((Book.title.ilike(term)) | (Book.author.ilike(term)) | (Book.description.ilike(term)))
     if request.args.get("category_id"):
-        query = query.filter(Book.category_id == int(request.args["category_id"]))
+        category_id, category_err = parse_int(request.args["category_id"], "category_id")
+        if category_err:
+            return category_err
+        query = query.filter(Book.category_id == category_id)
     if request.args.get("min_price"):
-        query = query.filter(Book.price >= Decimal(request.args["min_price"]))
+        min_price, min_price_err = parse_decimal(request.args["min_price"], "min_price")
+        if min_price_err:
+            return min_price_err
+        query = query.filter(Book.price >= min_price)
     if request.args.get("max_price"):
-        query = query.filter(Book.price <= Decimal(request.args["max_price"]))
+        max_price, max_price_err = parse_decimal(request.args["max_price"], "max_price")
+        if max_price_err:
+            return max_price_err
+        query = query.filter(Book.price <= max_price)
     if request.args.get("language"):
         query = query.filter(Book.language.ilike(request.args["language"]))
+    if request.args.get("min_rating"):
+        min_rating, rating_err = parse_decimal(request.args["min_rating"], "min_rating")
+        if rating_err:
+            return rating_err
+        query = query.outerjoin(Review).group_by(Book.id).having(func.coalesce(func.avg(Review.rating), 0) >= min_rating)
 
     sort_field = request.args.get("sort", "title")
     sort_order = request.args.get("order", "asc")
@@ -322,11 +359,6 @@ def list_books():
 
     paginated = query.paginate(page=page, per_page=per_page, error_out=False)
     items = [book_payload(book) for book in paginated.items]
-
-    min_rating = request.args.get("min_rating")
-    if min_rating:
-        threshold = float(min_rating)
-        items = [item for item in items if item["average_rating"] >= threshold]
 
     return response(
         data={
@@ -358,17 +390,26 @@ def create_book():
     if missing:
         return response(error="validation_error", message=f"Missing fields: {', '.join(missing)}", status=400)
 
-    category = Category.query.get(payload["category_id"])
+    category_id, category_err = parse_int(payload["category_id"], "category_id")
+    if category_err:
+        return category_err
+    category = Category.query.get(category_id)
     if not category:
         return response(error="not_found", message="Category not found", status=404)
+    price, price_err = parse_decimal(payload["price"], "price")
+    if price_err:
+        return price_err
+    stock_quantity, stock_err = parse_int(payload["stock_quantity"], "stock_quantity")
+    if stock_err:
+        return stock_err
 
     book = Book(
         title=payload["title"],
         author=payload["author"],
         description=payload["description"],
-        price=Decimal(str(payload["price"])),
+        price=price,
         isbn=payload["isbn"],
-        stock_quantity=int(payload["stock_quantity"]),
+        stock_quantity=stock_quantity,
         cover_image_url=payload["cover_image_url"],
         language=payload["language"],
         category=category,
@@ -390,11 +431,20 @@ def update_book(book_id):
         if field in payload:
             setattr(book, field, payload[field])
     if "price" in payload:
-        book.price = Decimal(str(payload["price"]))
+        price, price_err = parse_decimal(payload["price"], "price")
+        if price_err:
+            return price_err
+        book.price = price
     if "stock_quantity" in payload:
-        book.stock_quantity = int(payload["stock_quantity"])
+        stock_quantity, stock_err = parse_int(payload["stock_quantity"], "stock_quantity")
+        if stock_err:
+            return stock_err
+        book.stock_quantity = stock_quantity
     if "category_id" in payload:
-        category = Category.query.get(payload["category_id"])
+        category_id, category_err = parse_int(payload["category_id"], "category_id")
+        if category_err:
+            return category_err
+        category = Category.query.get(category_id)
         if not category:
             return response(error="not_found", message="Category not found", status=404)
         book.category = category
@@ -425,7 +475,10 @@ def get_cart():
 def add_cart_item():
     payload = request.get_json(silent=True) or {}
     book_id = payload.get("book_id")
-    quantity = max(int(payload.get("quantity", 1)), 1)
+    quantity, quantity_err = parse_int(payload.get("quantity", 1), "quantity")
+    if quantity_err:
+        return quantity_err
+    quantity = max(quantity, 1)
     book = Book.query.get(book_id)
     if not book:
         return response(error="not_found", message="Book not found", status=404)
@@ -446,7 +499,9 @@ def add_cart_item():
 def update_cart_item(item_id):
     item = CartItem.query.filter_by(id=item_id, user_id=current_user.id).first_or_404()
     payload = request.get_json(silent=True) or {}
-    quantity = int(payload.get("quantity", 1))
+    quantity, quantity_err = parse_int(payload.get("quantity", 1), "quantity")
+    if quantity_err:
+        return quantity_err
     if quantity <= 0:
         db.session.delete(item)
     else:
@@ -518,7 +573,9 @@ def create_order():
 @api_bp.get("/orders")
 @login_required
 def list_orders():
-    page, per_page = parse_pagination()
+    page, per_page, pagination_error = parse_pagination()
+    if pagination_error:
+        return pagination_error
     query = Order.query
     if not current_user.is_admin:
         query = query.filter_by(user_id=current_user.id)
@@ -526,7 +583,7 @@ def list_orders():
 
     return response(
         data={
-            "items": [order_payload(order) for order in paginated.items],
+            "items": [order_payload(order, include_sensitive=not current_user.is_admin) for order in paginated.items],
             "pagination": {
                 "page": page,
                 "per_page": per_page,
@@ -543,7 +600,7 @@ def get_order(order_id):
     order = Order.query.get_or_404(order_id)
     if not current_user.is_admin and order.user_id != current_user.id:
         return response(error="forbidden", message="Access denied", status=403)
-    return response(data=order_payload(order))
+    return response(data=order_payload(order, include_sensitive=(order.user_id == current_user.id)))
 
 
 @api_bp.get("/books/<int:book_id>/reviews")
@@ -558,7 +615,9 @@ def list_reviews(book_id):
 def create_review(book_id):
     Book.query.get_or_404(book_id)
     payload = request.get_json(silent=True) or {}
-    rating = int(payload.get("rating", 0))
+    rating, rating_err = parse_int(payload.get("rating", 0), "rating")
+    if rating_err:
+        return rating_err
     comment = (payload.get("comment") or "").strip()
 
     if rating < 1 or rating > 5 or not comment:
@@ -582,7 +641,9 @@ def update_review(review_id):
 
     payload = request.get_json(silent=True) or {}
     if "rating" in payload:
-        rating = int(payload["rating"])
+        rating, rating_err = parse_int(payload["rating"], "rating")
+        if rating_err:
+            return rating_err
         if rating < 1 or rating > 5:
             return response(error="validation_error", message="rating must be 1-5", status=400)
         review.rating = rating

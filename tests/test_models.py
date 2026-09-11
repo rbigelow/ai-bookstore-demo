@@ -17,7 +17,9 @@ def test_book_average_rating(app):
         category = Category.query.first()
         role = Role.query.filter_by(name="user").first()
         user = User(email="reader@example.com", full_name="Reader", role=role)
+        second_user = User(email="reader2@example.com", full_name="Reader Two", role=role)
         user.set_password("Pass123!")
+        second_user.set_password("Pass123!")
         book = Book(
             title="TDD by Example",
             author="Kent Beck",
@@ -29,12 +31,12 @@ def test_book_average_rating(app):
             language="English",
             category=category,
         )
-        db.session.add_all([user, book])
+        db.session.add_all([user, second_user, book])
         db.session.flush()
         db.session.add_all(
             [
                 Review(user_id=user.id, book_id=book.id, rating=5, comment="Great"),
-                Review(user_id=1, book_id=book.id, rating=3, comment="Okay"),
+                Review(user_id=second_user.id, book_id=book.id, rating=3, comment="Okay"),
             ]
         )
         db.session.commit()

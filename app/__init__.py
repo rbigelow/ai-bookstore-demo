@@ -1,4 +1,4 @@
-from flask import Flask, request, session
+from flask import Flask, request, session, url_for
 from flask_babel import gettext as _
 from flask_login import current_user
 
@@ -42,6 +42,15 @@ def create_app(config_object=Config):
     app.register_blueprint(web_bp)
     app.register_blueprint(api_bp, url_prefix="/api")
     csrf.exempt(api_bp)
+
+    @app.context_processor
+    def inject_helpers():
+        def lang_url(lang):
+            args = request.args.to_dict(flat=True)
+            args["lang"] = lang
+            return url_for(request.endpoint or "web.home", **(request.view_args or {}), **args)
+
+        return {"lang_url": lang_url}
 
     from app.services.seed import seed_command
 

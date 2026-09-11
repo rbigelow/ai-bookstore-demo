@@ -41,6 +41,7 @@ Set these environment variables:
 }
 ```
 When enabled, `POST /api/users/login` requires `otp_code`.
+For local development, valid mock OTP codes are generated per-user in `TwoFactorService._expected_codes(user)` (time-window based), so they are not shared hard-coded bypass values.
 
 ## Language Switching (EN/FR)
 - UI toggle uses `?lang=en` / `?lang=fr`

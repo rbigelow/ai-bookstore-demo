@@ -120,6 +120,7 @@ def checkout():
     if request.method == "POST":
         shipping_address = request.form.get("shipping_address", "").strip()
         payment_method = request.form.get("payment_method", "mock")
+        payment_token = request.form.get("payment_token")
         if not shipping_address:
             flash(_("Shipping address is required."), "error")
             return render_template("checkout.html", cart_items=current_user.cart_items)
@@ -135,7 +136,7 @@ def checkout():
             total += Decimal(item.book.price) * item.quantity
 
         try:
-            payment_reference = PaymentService.charge(float(total), payment_method)
+            payment_reference = PaymentService.charge(float(total), payment_method, payment_token)
         except ValueError as exc:
             flash(str(exc), "error")
             return render_template("checkout.html", cart_items=current_user.cart_items)
