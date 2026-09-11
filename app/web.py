@@ -132,9 +132,20 @@ def checkout():
                 return render_template("checkout.html", cart_items=current_user.cart_items)
             total += Decimal(item.book.price) * item.quantity
 
+        for item in list(current_user.cart_items):
+            affected = (
+                Book.query.filter(Book.id == item.book_id, Book.stock_quantity >= item.quantity)
+                .update({Book.stock_quantity: Book.stock_quantity - item.quantity}, synchronize_session=False)
+            )
+            if affected == 0:
+                db.session.rollback()
+                flash(_("Insufficient stock for %(title)s", title=item.book.title), "error")
+                return render_template("checkout.html", cart_items=current_user.cart_items)
+
         try:
             payment_reference = PaymentService.charge(float(total), payment_method, payment_token)
         except ValueError:
+            db.session.rollback()
             flash(_("Invalid payment request."), "error")
             return render_template("checkout.html", cart_items=current_user.cart_items)
 
@@ -148,14 +159,6 @@ def checkout():
         db.session.add(order)
         db.session.flush()
         for item in list(current_user.cart_items):
-            affected = (
-                Book.query.filter(Book.id == item.book_id, Book.stock_quantity >= item.quantity)
-                .update({Book.stock_quantity: Book.stock_quantity - item.quantity}, synchronize_session=False)
-            )
-            if affected == 0:
-                db.session.rollback()
-                flash(_("Insufficient stock for %(title)s", title=item.book.title), "error")
-                return render_template("checkout.html", cart_items=current_user.cart_items)
             db.session.add(
                 OrderItem(
                     order_id=order.id,

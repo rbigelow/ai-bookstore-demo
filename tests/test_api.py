@@ -94,6 +94,10 @@ def test_admin_order_list_redacts_sensitive_fields(client):
         json={"shipping_address": "456 Buyer Lane", "payment_method": "mock", "payment_token": "tok_admincheck"},
     )
     order_id = created.get_json()["data"]["id"]
+    owner_list = client.get("/api/orders")
+    owner_order = next(item for item in owner_list.get_json()["data"]["items"] if item["id"] == order_id)
+    assert "shipping_address" in owner_order
+    assert "payment_reference" in owner_order
     owner_detail = client.get(f"/api/orders/{order_id}")
     assert owner_detail.status_code == 200
     assert "shipping_address" in owner_detail.get_json()["data"]

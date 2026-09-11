@@ -20,6 +20,7 @@ class Config:
 
     FIREBASE_PROJECT_ID = os.getenv("FIREBASE_PROJECT_ID")
     FIREBASE_WEB_API_KEY = os.getenv("FIREBASE_WEB_API_KEY")
+    ADMIN_PASSWORD = os.getenv("ADMIN_PASSWORD")
 
 
 class TestingConfig(Config):
@@ -27,3 +28,4 @@ class TestingConfig(Config):
     WTF_CSRF_ENABLED = False
     SQLALCHEMY_DATABASE_URI = "sqlite:///:memory:"
     SESSION_COOKIE_SECURE = False
+    ADMIN_PASSWORD = "Admin123!"

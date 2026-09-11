@@ -58,7 +58,10 @@ pybabel compile -d translations
 `flask --app run.py seed` creates:
 - 10 categories
 - 100 placeholder books
-- admin user: `admin@bookstore.local` / `Admin123!`
+- admin user: `admin@bookstore.local`
+
+Set `ADMIN_PASSWORD` before seeding to control the admin password.
+If `ADMIN_PASSWORD` is not set, a one-time random password is generated and printed during `flask --app run.py seed`.
 
 ## Run Tests
 ```bash

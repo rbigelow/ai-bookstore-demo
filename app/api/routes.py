@@ -540,9 +540,19 @@ def create_order():
             return response(error="out_of_stock", message=f"Insufficient stock for {item.book.title}", status=400)
         total += Decimal(item.book.price) * item.quantity
 
+    for cart_item in list(current_user.cart_items):
+        affected = (
+            Book.query.filter(Book.id == cart_item.book_id, Book.stock_quantity >= cart_item.quantity)
+            .update({Book.stock_quantity: Book.stock_quantity - cart_item.quantity}, synchronize_session=False)
+        )
+        if affected == 0:
+            db.session.rollback()
+            return response(error="out_of_stock", message=f"Insufficient stock for {cart_item.book.title}", status=400)
+
     try:
         payment_reference = PaymentService.charge(float(total), payment_method, payment_token)
     except ValueError:
+        db.session.rollback()
         return response(error="payment_error", message="Invalid payment request", status=400)
 
     order = Order(
@@ -556,13 +566,6 @@ def create_order():
     db.session.flush()
 
     for cart_item in list(current_user.cart_items):
-        affected = (
-            Book.query.filter(Book.id == cart_item.book_id, Book.stock_quantity >= cart_item.quantity)
-            .update({Book.stock_quantity: Book.stock_quantity - cart_item.quantity}, synchronize_session=False)
-        )
-        if affected == 0:
-            db.session.rollback()
-            return response(error="out_of_stock", message=f"Insufficient stock for {cart_item.book.title}", status=400)
         db.session.add(
             OrderItem(
                 order_id=order.id,

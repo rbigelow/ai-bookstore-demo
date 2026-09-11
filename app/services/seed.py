@@ -2,6 +2,7 @@ import random
 
 import click
 from flask.cli import with_appcontext
+from flask import current_app
 
 from app.extensions import db
 from app.models import Book, Category, Role, TwoFactorSetting, User
@@ -66,6 +67,7 @@ def seed_data():
             db.session.add(book)
 
     admin = User.query.filter_by(email="admin@bookstore.local").first()
+    admin_password = current_app.config.get("ADMIN_PASSWORD") or f"Admin-{random.randint(100000, 999999)}!"
     if not admin:
         admin = User(
             email="admin@bookstore.local",
@@ -74,10 +76,12 @@ def seed_data():
             language_preference="en",
             two_factor_enabled=False,
         )
-        admin.set_password("Admin123!")
+        admin.set_password(admin_password)
         db.session.add(admin)
         db.session.flush()
         db.session.add(TwoFactorSetting(user_id=admin.id, enabled=False, method="app"))
+        if not current_app.config.get("ADMIN_PASSWORD"):
+            click.echo(f"Generated admin password: {admin_password}")
     elif not admin.two_factor_secret:
         admin.two_factor_secret = User.two_factor_secret.default.arg()
 
