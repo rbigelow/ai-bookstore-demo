@@ -85,7 +85,7 @@ def test_review_crud(client):
     assert deleted.status_code == 200
 
 
-def test_admin_order_list_redacts_sensitive_fields(client):
+def test_admin_order_list_redacts_sensitive_fields(client, app):
     register_and_login(client, email="buyer@example.com")
     book_id = client.get("/api/books?per_page=1").get_json()["data"]["items"][0]["id"]
     client.post("/api/cart/items", json={"book_id": book_id, "quantity": 1})
@@ -106,7 +106,7 @@ def test_admin_order_list_redacts_sensitive_fields(client):
 
     client.post(
         "/api/users/login",
-        json={"email": "admin@bookstore.local", "password": "Admin123!"},
+        json={"email": "admin@bookstore.local", "password": app.config["ADMIN_PASSWORD"]},
     )
     list_resp = client.get("/api/orders")
     assert list_resp.status_code == 200

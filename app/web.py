@@ -3,6 +3,7 @@ from decimal import Decimal
 from flask import Blueprint, flash, redirect, render_template, request, url_for
 from flask_babel import gettext as _
 from flask_login import current_user, login_required, login_user, logout_user
+from sqlalchemy.exc import SQLAlchemyError
 
 from app.extensions import db
 from app.models import Book, CartItem, Category, Order, OrderItem, Role, User
@@ -156,20 +157,26 @@ def checkout():
             payment_reference=payment_reference,
             status="paid",
         )
-        db.session.add(order)
-        db.session.flush()
-        for item in list(current_user.cart_items):
-            db.session.add(
-                OrderItem(
-                    order_id=order.id,
-                    book_id=item.book_id,
-                    title_snapshot=item.book.title,
-                    unit_price=item.book.price,
-                    quantity=item.quantity,
+        try:
+            db.session.add(order)
+            db.session.flush()
+            for item in list(current_user.cart_items):
+                db.session.add(
+                    OrderItem(
+                        order_id=order.id,
+                        book_id=item.book_id,
+                        title_snapshot=item.book.title,
+                        unit_price=item.book.price,
+                        quantity=item.quantity,
+                    )
                 )
-            )
-            db.session.delete(item)
-        db.session.commit()
+                db.session.delete(item)
+            db.session.commit()
+        except SQLAlchemyError:
+            db.session.rollback()
+            PaymentService.refund(payment_reference)
+            flash(_("Order failed after payment authorization; payment was reversed."), "error")
+            return render_template("checkout.html", cart_items=current_user.cart_items)
         flash(_("Order created successfully."), "success")
         return redirect(url_for("web.orders"))
 

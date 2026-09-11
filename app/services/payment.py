@@ -11,3 +11,9 @@ class PaymentService:
         if payment_method not in {"card", "wallet", "mock"}:
             raise ValueError("Unsupported payment method")
         return f"pay_{payment_method}_{uuid.uuid4().hex[:16]}"
+
+    @staticmethod
+    def refund(payment_reference):
+        if not payment_reference:
+            raise ValueError("payment_reference is required")
+        return f"refund_{payment_reference}"

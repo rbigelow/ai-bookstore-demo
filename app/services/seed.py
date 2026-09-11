@@ -1,4 +1,5 @@
 import random
+import secrets
 
 import click
 from flask.cli import with_appcontext
@@ -67,7 +68,7 @@ def seed_data():
             db.session.add(book)
 
     admin = User.query.filter_by(email="admin@bookstore.local").first()
-    admin_password = current_app.config.get("ADMIN_PASSWORD") or f"Admin-{random.randint(100000, 999999)}!"
+    admin_password = current_app.config.get("ADMIN_PASSWORD") or f"Admin-{secrets.token_urlsafe(10)}!"
     if not admin:
         admin = User(
             email="admin@bookstore.local",

@@ -3,6 +3,7 @@ from decimal import Decimal
 from flask import Blueprint, jsonify, request, session
 from flask_login import current_user, login_required, login_user, logout_user
 from sqlalchemy import asc, desc, func
+from sqlalchemy.exc import SQLAlchemyError
 
 from app.extensions import db
 from app.models import (
@@ -555,29 +556,34 @@ def create_order():
         db.session.rollback()
         return response(error="payment_error", message="Invalid payment request", status=400)
 
-    order = Order(
-        user_id=current_user.id,
-        total_amount=total,
-        shipping_address=shipping_address,
-        payment_reference=payment_reference,
-        status="paid",
-    )
-    db.session.add(order)
-    db.session.flush()
-
-    for cart_item in list(current_user.cart_items):
-        db.session.add(
-            OrderItem(
-                order_id=order.id,
-                book_id=cart_item.book_id,
-                title_snapshot=cart_item.book.title,
-                unit_price=cart_item.book.price,
-                quantity=cart_item.quantity,
-            )
+    try:
+        order = Order(
+            user_id=current_user.id,
+            total_amount=total,
+            shipping_address=shipping_address,
+            payment_reference=payment_reference,
+            status="paid",
         )
-        db.session.delete(cart_item)
+        db.session.add(order)
+        db.session.flush()
 
-    db.session.commit()
+        for cart_item in list(current_user.cart_items):
+            db.session.add(
+                OrderItem(
+                    order_id=order.id,
+                    book_id=cart_item.book_id,
+                    title_snapshot=cart_item.book.title,
+                    unit_price=cart_item.book.price,
+                    quantity=cart_item.quantity,
+                )
+            )
+            db.session.delete(cart_item)
+
+        db.session.commit()
+    except SQLAlchemyError:
+        db.session.rollback()
+        PaymentService.refund(payment_reference)
+        return response(error="order_error", message="Order creation failed after payment authorization", status=500)
     return response(data=order_payload(order), message="Order created", status=201)
 
 
