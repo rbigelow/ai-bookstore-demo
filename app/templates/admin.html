@@ -1,0 +1,10 @@
+{% extends 'base.html' %}
+{% block title %}Admin - AI Bookstore{% endblock %}
+{% block content %}
+<h1>{{ _('Admin Dashboard') }}</h1>
+<ul>
+  <li>Total books: {{ book_count }}</li>
+  <li>Total categories: {{ category_count }}</li>
+</ul>
+<p>Admin CRUD is available via API for books, categories, and reviews moderation.</p>
+{% endblock %}

@@ -1,0 +1,125 @@
+def register_and_login(client, email="user@example.com", secret="Pass123!", full_name="Test User"):
+    client.post(
+        "/api/users/register",
+        json={"email": email, "password": secret, "full_name": full_name},
+    )
+    return client.post("/api/users/login", json={"email": email, "password": secret})
+
+
+def test_register_login_and_profile(client):
+    response = client.post(
+        "/api/users/register",
+        json={"email": "alice@example.com", "password": "Pass123!", "full_name": "Alice"},
+    )
+    assert response.status_code == 201
+    data = response.get_json()["data"]
+    assert data["email"] == "alice@example.com"
+
+    login = client.post("/api/users/login", json={"email": "alice@example.com", "password": "Pass123!"})
+    assert login.status_code == 200
+
+    profile = client.get("/api/users/profile")
+    assert profile.status_code == 200
+    assert profile.get_json()["data"]["full_name"] == "Alice"
+
+
+def test_books_list_with_filters(client):
+    response = client.get("/api/books?page=1&per_page=10&language=English&sort=price&order=desc")
+    assert response.status_code == 200
+    payload = response.get_json()["data"]
+    assert payload["pagination"]["per_page"] == 10
+    assert len(payload["items"]) <= 10
+
+
+def test_books_min_rating_filter_with_pagination(client):
+    register_and_login(client, email="reviewer@example.com")
+    book_id = client.get("/api/books?per_page=1").get_json()["data"]["items"][0]["id"]
+    client.post(f"/api/books/{book_id}/reviews", json={"rating": 5, "comment": "Great rating filter test"})
+    client.post("/api/users/logout")
+
+    response = client.get("/api/books?min_rating=4&page=1&per_page=5")
+    assert response.status_code == 200
+    payload = response.get_json()["data"]
+    assert payload["pagination"]["page"] == 1
+    assert payload["pagination"]["per_page"] == 5
+    assert all(item["average_rating"] >= 4 for item in payload["items"])
+
+
+def test_cart_checkout_and_orders(client):
+    register_and_login(client)
+
+    books = client.get("/api/books?per_page=1").get_json()["data"]["items"]
+    book_id = books[0]["id"]
+
+    add_item = client.post("/api/cart/items", json={"book_id": book_id, "quantity": 2})
+    assert add_item.status_code == 200
+
+    checkout = client.post(
+        "/api/orders",
+        json={"shipping_address": "123 Main Street", "payment_method": "mock", "payment_token": "tok_test"},
+    )
+    assert checkout.status_code == 201
+    order_id = checkout.get_json()["data"]["id"]
+
+    orders = client.get("/api/orders")
+    assert orders.status_code == 200
+    assert orders.get_json()["data"]["items"][0]["id"] == order_id
+
+
+def test_review_crud(client):
+    register_and_login(client)
+    book_id = client.get("/api/books?per_page=1").get_json()["data"]["items"][0]["id"]
+
+    created = client.post(
+        f"/api/books/{book_id}/reviews",
+        json={"rating": 5, "comment": "Excellent read."},
+    )
+    assert created.status_code == 201
+    review_id = created.get_json()["data"]["id"]
+
+    updated = client.put(f"/api/reviews/{review_id}", json={"rating": 4, "comment": "Still great."})
+    assert updated.status_code == 200
+    assert updated.get_json()["data"]["rating"] == 4
+
+    deleted = client.delete(f"/api/reviews/{review_id}")
+    assert deleted.status_code == 200
+
+
+def test_admin_order_list_redacts_sensitive_fields(client, app):
+    register_and_login(client, email="buyer@example.com")
+    book_id = client.get("/api/books?per_page=1").get_json()["data"]["items"][0]["id"]
+    client.post("/api/cart/items", json={"book_id": book_id, "quantity": 1})
+    created = client.post(
+        "/api/orders",
+        json={"shipping_address": "456 Buyer Lane", "payment_method": "mock", "payment_token": "tok_admincheck"},
+    )
+    order_id = created.get_json()["data"]["id"]
+    owner_list = client.get("/api/orders")
+    owner_order = next(item for item in owner_list.get_json()["data"]["items"] if item["id"] == order_id)
+    assert "shipping_address" in owner_order
+    assert "payment_reference" in owner_order
+    owner_detail = client.get(f"/api/orders/{order_id}")
+    assert owner_detail.status_code == 200
+    assert "shipping_address" in owner_detail.get_json()["data"]
+    assert "payment_reference" in owner_detail.get_json()["data"]
+    client.post("/api/users/logout")
+
+    client.post(
+        "/api/users/login",
+        json={"email": "admin@bookstore.local", "password": app.config["ADMIN_PASSWORD"]},
+    )
+    list_resp = client.get("/api/orders")
+    assert list_resp.status_code == 200
+    admin_order = next(item for item in list_resp.get_json()["data"]["items"] if item["id"] == order_id)
+    assert "shipping_address" not in admin_order
+    assert "payment_reference" not in admin_order
+
+    detail_resp = client.get(f"/api/orders/{order_id}")
+    assert detail_resp.status_code == 200
+    assert "shipping_address" not in detail_resp.get_json()["data"]
+    assert "payment_reference" not in detail_resp.get_json()["data"]
+    client.post("/api/users/logout")
+
+    register_and_login(client, email="other@example.com")
+    forbidden = client.get(f"/api/orders/{order_id}")
+    assert forbidden.status_code == 403

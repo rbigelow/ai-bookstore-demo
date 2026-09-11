@@ -1,0 +1,16 @@
+{% extends 'base.html' %}
+{% block title %}Home - AI Bookstore{% endblock %}
+{% block content %}
+<h1>AI Bookstore</h1>
+<p>Browse our latest books.</p>
+<div class="grid">
+  {% for book in books %}
+  <article class="card">
+    <img src="{{ book.cover_image_url }}" alt="{{ book.title }}">
+    <h3><a href="{{ url_for('web.book_detail', book_id=book.id) }}">{{ book.title }}</a></h3>
+    <p>{{ book.author }}</p>
+    <p>${{ book.price }}</p>
+  </article>
+  {% endfor %}
+</div>
+{% endblock %}

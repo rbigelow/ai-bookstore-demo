@@ -1,0 +1,60 @@
+msgid ""
+msgstr ""
+"Language: fr\n"
+"MIME-Version: 1.0\n"
+"Content-Type: text/plain; charset=UTF-8\n"
+"Content-Transfer-Encoding: 8bit\n"
+
+msgid "Home"
+msgstr "Accueil"
+
+msgid "Catalog"
+msgstr "Catalogue"
+
+msgid "Categories"
+msgstr "Catégories"
+
+msgid "Cart"
+msgstr "Panier"
+
+msgid "Orders"
+msgstr "Commandes"
+
+msgid "Profile"
+msgstr "Profil"
+
+msgid "Admin"
+msgstr "Admin"
+
+msgid "Logout"
+msgstr "Déconnexion"
+
+msgid "Login"
+msgstr "Connexion"
+
+msgid "Register"
+msgstr "Inscription"
+
+msgid "Create account"
+msgstr "Créer un compte"
+
+msgid "Full name"
+msgstr "Nom complet"
+
+msgid "Password"
+msgstr "Mot de passe"
+
+msgid "Your Cart"
+msgstr "Votre panier"
+
+msgid "Admin Dashboard"
+msgstr "Tableau de bord admin"
+
+msgid "Average rating"
+msgstr "Note moyenne"
+
+msgid "reviews"
+msgstr "avis"
+
+msgid "Add to Cart"
+msgstr "Ajouter au panier"
