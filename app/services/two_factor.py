@@ -15,7 +15,7 @@ class TwoFactorService:
 
     @staticmethod
     def _expected_codes(user):
-        seed = f"{user.id}:{user.password_hash}".encode("utf-8")
+        seed = f"{user.id}:{user.two_factor_secret}".encode("utf-8")
         codes = []
         for offset in (-1, 0, 1):
             timestep = int(time.time() // 30) + offset

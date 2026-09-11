@@ -1,5 +1,6 @@
 from datetime import datetime
 from decimal import Decimal
+import secrets
 
 from flask_login import UserMixin
 from werkzeug.security import check_password_hash, generate_password_hash
@@ -23,6 +24,7 @@ class User(UserMixin, db.Model):
     two_factor_enabled = db.Column(db.Boolean, default=False, nullable=False)
     two_factor_method = db.Column(db.String(32), default="app", nullable=False)
     firebase_uid = db.Column(db.String(128), nullable=True)
+    two_factor_secret = db.Column(db.String(64), nullable=False, default=lambda: secrets.token_hex(16))
 
     created_at = db.Column(db.DateTime, default=datetime.utcnow, nullable=False)
 

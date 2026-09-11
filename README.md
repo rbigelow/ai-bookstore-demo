@@ -47,6 +47,12 @@ For local development, valid mock OTP codes are generated per-user in `TwoFactor
 - UI toggle uses `?lang=en` / `?lang=fr`
 - Preference can be persisted via `PUT /api/users/profile` with `language_preference`
 - Flask-Babel catalogs are in `/translations`
+- Refresh translation catalogs:
+```bash
+pybabel extract -F babel.cfg -o messages.pot .
+pybabel update -i messages.pot -d translations
+pybabel compile -d translations
+```
 
 ## Seeding Data
 `flask --app run.py seed` creates:

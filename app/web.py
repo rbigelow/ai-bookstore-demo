@@ -134,8 +134,8 @@ def checkout():
 
         try:
             payment_reference = PaymentService.charge(float(total), payment_method, payment_token)
-        except ValueError as exc:
-            flash(str(exc), "error")
+        except ValueError:
+            flash(_("Invalid payment request."), "error")
             return render_template("checkout.html", cart_items=current_user.cart_items)
 
         order = Order(
@@ -148,7 +148,14 @@ def checkout():
         db.session.add(order)
         db.session.flush()
         for item in current_user.cart_items:
-            item.book.stock_quantity -= item.quantity
+            affected = (
+                Book.query.filter(Book.id == item.book_id, Book.stock_quantity >= item.quantity)
+                .update({Book.stock_quantity: Book.stock_quantity - item.quantity}, synchronize_session=False)
+            )
+            if affected == 0:
+                db.session.rollback()
+                flash(_("Insufficient stock for %(title)s", title=item.book.title), "error")
+                return render_template("checkout.html", cart_items=current_user.cart_items)
             db.session.add(
                 OrderItem(
                     order_id=order.id,

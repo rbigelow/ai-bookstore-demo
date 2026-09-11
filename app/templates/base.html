@@ -28,13 +28,13 @@
     <a href="{{ url_for('web.login') }}">{{ _('Login') }}</a>
     <a href="{{ url_for('web.register') }}">{{ _('Register') }}</a>
   {% endif %}
-  <a href="{{ lang_url('en') }}">EN</a>
-  <a href="{{ lang_url('fr') }}">FR</a>
+  <a href="{{ lang_url('en') }}" aria-label="Switch language to English">EN</a>
+  <a href="{{ lang_url('fr') }}" aria-label="Passer la langue en français">FR</a>
 </header>
 <main class="container">
   {% with messages = get_flashed_messages(with_categories=true) %}
     {% if messages %}
-      <ul>
+      <ul role="status" aria-live="polite">
       {% for category, message in messages %}
         <li class="flash {{ category }}">{{ message }}</li>
       {% endfor %}

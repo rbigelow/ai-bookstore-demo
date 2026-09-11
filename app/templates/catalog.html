@@ -3,8 +3,8 @@
 {% block content %}
 <h1>{{ _('Catalog') }}</h1>
 <form method="get">
-  <label>Category</label>
-  <select name="category_id" onchange="this.form.submit()">
+  <label for="category_id">Category</label>
+  <select id="category_id" name="category_id" onchange="this.form.submit()">
     <option value="">All</option>
     {% for category in categories %}
     <option value="{{ category.id }}" {% if selected == category.id %}selected{% endif %}>{{ category.name }}</option>

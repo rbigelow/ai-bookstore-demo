@@ -73,7 +73,7 @@ def category_payload(category):
     return {"id": category.id, "name": category.name, "description": category.description}
 
 
-def book_payload(book):
+def book_payload(book, average_rating=None, review_count=None):
     return {
         "id": book.id,
         "title": book.title,
@@ -85,8 +85,8 @@ def book_payload(book):
         "cover_image_url": book.cover_image_url,
         "language": book.language,
         "category": category_payload(book.category),
-        "average_rating": book.average_rating,
-        "review_count": book.review_count,
+        "average_rating": round(float(average_rating), 2) if average_rating is not None else book.average_rating,
+        "review_count": int(review_count) if review_count is not None else book.review_count,
     }
 
 
@@ -323,7 +323,9 @@ def list_books():
     page, per_page, pagination_error = parse_pagination()
     if pagination_error:
         return pagination_error
-    query = Book.query
+    avg_rating = func.coalesce(func.avg(Review.rating), 0.0)
+    review_count = func.count(Review.id)
+    query = db.session.query(Book, avg_rating.label("avg_rating"), review_count.label("review_count")).outerjoin(Review).group_by(Book.id)
 
     if request.args.get("q"):
         term = f"%{request.args['q'].strip()}%"
@@ -349,7 +351,7 @@ def list_books():
         min_rating, rating_err = parse_decimal(request.args["min_rating"], "min_rating")
         if rating_err:
             return rating_err
-        query = query.outerjoin(Review).group_by(Book.id).having(func.coalesce(func.avg(Review.rating), 0) >= min_rating)
+        query = query.having(avg_rating >= min_rating)
 
     sort_field = request.args.get("sort", "title")
     sort_order = request.args.get("order", "asc")
@@ -358,7 +360,7 @@ def list_books():
     query = query.order_by(desc(col) if sort_order == "desc" else asc(col))
 
     paginated = query.paginate(page=page, per_page=per_page, error_out=False)
-    items = [book_payload(book) for book in paginated.items]
+    items = [book_payload(book, average_rating=avg, review_count=count) for book, avg, count in paginated.items]
 
     return response(
         data={
@@ -540,8 +542,8 @@ def create_order():
 
     try:
         payment_reference = PaymentService.charge(float(total), payment_method, payment_token)
-    except ValueError as exc:
-        return response(error="payment_error", message=str(exc), status=400)
+    except ValueError:
+        return response(error="payment_error", message="Invalid payment request", status=400)
 
     order = Order(
         user_id=current_user.id,
@@ -554,7 +556,13 @@ def create_order():
     db.session.flush()
 
     for cart_item in current_user.cart_items:
-        cart_item.book.stock_quantity -= cart_item.quantity
+        affected = (
+            Book.query.filter(Book.id == cart_item.book_id, Book.stock_quantity >= cart_item.quantity)
+            .update({Book.stock_quantity: Book.stock_quantity - cart_item.quantity}, synchronize_session=False)
+        )
+        if affected == 0:
+            db.session.rollback()
+            return response(error="out_of_stock", message=f"Insufficient stock for {cart_item.book.title}", status=400)
         db.session.add(
             OrderItem(
                 order_id=order.id,

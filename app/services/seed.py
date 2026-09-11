@@ -78,5 +78,7 @@ def seed_data():
         db.session.add(admin)
         db.session.flush()
         db.session.add(TwoFactorSetting(user_id=admin.id, enabled=False, method="app"))
+    elif not admin.two_factor_secret:
+        admin.two_factor_secret = User.two_factor_secret.default.arg()
 
     db.session.commit()

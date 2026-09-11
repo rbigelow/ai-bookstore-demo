@@ -5,15 +5,16 @@
 {% if cart_items %}
 <form method="post">
   <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
-  <label>Shipping address <textarea name="shipping_address" required></textarea></label>
-  <label>Payment method
-    <select name="payment_method">
+  <label for="shipping_address">Shipping address</label>
+  <textarea id="shipping_address" name="shipping_address" required></textarea>
+  <label for="payment_method">Payment method</label>
+  <select id="payment_method" name="payment_method">
       <option value="mock">Mock</option>
       <option value="card">Card</option>
       <option value="wallet">Wallet</option>
     </select>
-  </label>
-  <label>Payment token (mock) <input name="payment_token" value="tok_demo"></label>
+  <label for="payment_token">Payment token (mock)</label>
+  <input id="payment_token" name="payment_token" value="tok_demo">
   <button type="submit">Place Order</button>
 </form>
 {% else %}
