@@ -31,6 +31,20 @@ def test_books_list_with_filters(client):
     assert len(payload["items"]) <= 10
 
 
+def test_books_min_rating_filter_with_pagination(client):
+    register_and_login(client, email="reviewer@example.com")
+    book_id = client.get("/api/books?per_page=1").get_json()["data"]["items"][0]["id"]
+    client.post(f"/api/books/{book_id}/reviews", json={"rating": 5, "comment": "Great rating filter test"})
+    client.post("/api/users/logout")
+
+    response = client.get("/api/books?min_rating=4&page=1&per_page=5")
+    assert response.status_code == 200
+    payload = response.get_json()["data"]
+    assert payload["pagination"]["page"] == 1
+    assert payload["pagination"]["per_page"] == 5
+    assert all(item["average_rating"] >= 4 for item in payload["items"])
+
+
 def test_cart_checkout_and_orders(client):
     register_and_login(client)
 
@@ -69,3 +83,30 @@ def test_review_crud(client):
 
     deleted = client.delete(f"/api/reviews/{review_id}")
     assert deleted.status_code == 200
+
+
+def test_admin_order_list_redacts_sensitive_fields(client):
+    register_and_login(client, email="buyer@example.com")
+    book_id = client.get("/api/books?per_page=1").get_json()["data"]["items"][0]["id"]
+    client.post("/api/cart/items", json={"book_id": book_id, "quantity": 1})
+    created = client.post(
+        "/api/orders",
+        json={"shipping_address": "456 Buyer Lane", "payment_method": "mock", "payment_token": "tok_admincheck"},
+    )
+    order_id = created.get_json()["data"]["id"]
+    client.post("/api/users/logout")
+
+    client.post(
+        "/api/users/login",
+        json={"email": "admin@bookstore.local", "password": "Admin123!"},
+    )
+    list_resp = client.get("/api/orders")
+    assert list_resp.status_code == 200
+    admin_order = next(item for item in list_resp.get_json()["data"]["items"] if item["id"] == order_id)
+    assert "shipping_address" not in admin_order
+    assert "payment_reference" not in admin_order
+
+    detail_resp = client.get(f"/api/orders/{order_id}")
+    assert detail_resp.status_code == 200
+    assert "shipping_address" in detail_resp.get_json()["data"]
+    assert "payment_reference" in detail_resp.get_json()["data"]

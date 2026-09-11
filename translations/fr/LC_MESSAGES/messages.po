@@ -11,8 +11,14 @@ msgstr "Accueil"
 msgid "Catalog"
 msgstr "Catalogue"
 
+msgid "Categories"
+msgstr "Catégories"
+
 msgid "Cart"
 msgstr "Panier"
+
+msgid "Orders"
+msgstr "Commandes"
 
 msgid "Profile"
 msgstr "Profil"

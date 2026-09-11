@@ -1,6 +1,7 @@
 from flask import Flask, request, session, url_for
 from flask_babel import gettext as _
 from flask_login import current_user
+from werkzeug.exceptions import HTTPException
 
 from config import Config
 from app.extensions import babel, csrf, db, login_manager
@@ -55,6 +56,17 @@ def create_app(config_object=Config):
     from app.services.seed import seed_command
 
     app.cli.add_command(seed_command)
+
+    @app.errorhandler(Exception)
+    def handle_exception(err):
+        if not request.path.startswith("/api"):
+            if isinstance(err, HTTPException):
+                return err
+            raise err
+        if isinstance(err, HTTPException):
+            return {"data": None, "message": err.description, "error": err.name}, err.code
+        app.logger.exception("Unhandled exception")
+        return {"data": None, "message": "Internal server error", "error": "internal_error"}, 500
 
     with app.app_context():
         db.create_all()

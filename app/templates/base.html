@@ -10,10 +10,10 @@
 <header class="nav">
   <a href="{{ url_for('web.home') }}">{{ _('Home') }}</a>
   <a href="{{ url_for('web.catalog') }}">{{ _('Catalog') }}</a>
-  <a href="{{ url_for('web.categories') }}">Categories</a>
+  <a href="{{ url_for('web.categories') }}">{{ _('Categories') }}</a>
   <a href="{{ url_for('web.cart_page') }}">{{ _('Cart') }}</a>
   {% if current_user.is_authenticated %}
-    <a href="{{ url_for('web.orders') }}">Orders</a>
+    <a href="{{ url_for('web.orders') }}">{{ _('Orders') }}</a>
   {% endif %}
   {% if current_user.is_authenticated %}
     <a href="{{ url_for('web.profile') }}">{{ _('Profile') }}</a>

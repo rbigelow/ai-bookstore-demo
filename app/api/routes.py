@@ -600,7 +600,7 @@ def get_order(order_id):
     order = Order.query.get_or_404(order_id)
     if not current_user.is_admin and order.user_id != current_user.id:
         return response(error="forbidden", message="Access denied", status=403)
-    return response(data=order_payload(order, include_sensitive=(order.user_id == current_user.id)))
+    return response(data=order_payload(order, include_sensitive=(current_user.is_admin or order.user_id == current_user.id)))
 
 
 @api_bp.get("/books/<int:book_id>/reviews")

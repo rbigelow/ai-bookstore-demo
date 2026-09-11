@@ -7,15 +7,12 @@ from flask_login import current_user, login_required, login_user, logout_user
 from app.extensions import db
 from app.models import Book, CartItem, Category, Order, OrderItem, Role, User
 from app.services.payment import PaymentService
-from app.services.seed import seed_data
 
 web_bp = Blueprint("web", __name__)
 
 
 @web_bp.get("/")
 def home():
-    if Category.query.count() == 0:
-        seed_data()
     featured_books = Book.query.order_by(Book.id.asc()).limit(12).all()
     categories = Category.query.order_by(Category.name.asc()).all()
     return render_template("home.html", books=featured_books, categories=categories)
