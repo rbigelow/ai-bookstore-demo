@@ -1,0 +1,13 @@
+{% extends 'base.html' %}
+{% block title %}Profile - AI Bookstore{% endblock %}
+{% block content %}
+<h1>Profile</h1>
+<ul>
+  <li>Name: {{ current_user.full_name }}</li>
+  <li>Email: {{ current_user.email }}</li>
+  <li>Language: {{ current_user.language_preference }}</li>
+  <li>2FA Enabled: {{ current_user.two_factor_enabled }}</li>
+  <li>2FA Method: {{ current_user.two_factor_method }}</li>
+</ul>
+<p>Use <code>PUT /api/users/profile</code> to update profile, language, and 2FA settings.</p>
+{% endblock %}

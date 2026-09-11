@@ -1,0 +1,45 @@
+<!doctype html>
+<html lang="{{ session.get('lang', 'en') }}">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>{% block title %}{{ _('AI Bookstore') }}{% endblock %}</title>
+  <link rel="stylesheet" href="{{ url_for('static', filename='css/style.css') }}">
+</head>
+<body>
+<header class="nav">
+  <a href="{{ url_for('web.home') }}">{{ _('Home') }}</a>
+  <a href="{{ url_for('web.catalog') }}">{{ _('Catalog') }}</a>
+  <a href="{{ url_for('web.categories') }}">Categories</a>
+  <a href="{{ url_for('web.cart_page') }}">{{ _('Cart') }}</a>
+  {% if current_user.is_authenticated %}
+    <a href="{{ url_for('web.orders') }}">Orders</a>
+  {% endif %}
+  {% if current_user.is_authenticated %}
+    <a href="{{ url_for('web.profile') }}">{{ _('Profile') }}</a>
+    <a href="{{ url_for('web.admin_dashboard') }}">{{ _('Admin') }}</a>
+    <form method="post" action="{{ url_for('web.logout') }}" class="inline">
+      <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+      <button type="submit">{{ _('Logout') }}</button>
+    </form>
+  {% else %}
+    <a href="{{ url_for('web.login') }}">{{ _('Login') }}</a>
+    <a href="{{ url_for('web.register') }}">{{ _('Register') }}</a>
+  {% endif %}
+  <a href="{{ request.path }}?lang=en">EN</a>
+  <a href="{{ request.path }}?lang=fr">FR</a>
+</header>
+<main class="container">
+  {% with messages = get_flashed_messages(with_categories=true) %}
+    {% if messages %}
+      <ul>
+      {% for category, message in messages %}
+        <li class="flash {{ category }}">{{ message }}</li>
+      {% endfor %}
+      </ul>
+    {% endif %}
+  {% endwith %}
+  {% block content %}{% endblock %}
+</main>
+</body>
+</html>

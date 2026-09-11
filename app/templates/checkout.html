@@ -1,0 +1,21 @@
+{% extends 'base.html' %}
+{% block title %}Checkout - AI Bookstore{% endblock %}
+{% block content %}
+<h1>Checkout</h1>
+{% if cart_items %}
+<form method="post">
+  <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+  <label>Shipping address <textarea name="shipping_address" required></textarea></label>
+  <label>Payment method
+    <select name="payment_method">
+      <option value="mock">Mock</option>
+      <option value="card">Card</option>
+      <option value="wallet">Wallet</option>
+    </select>
+  </label>
+  <button type="submit">Place Order</button>
+</form>
+{% else %}
+<p>Your cart is empty.</p>
+{% endif %}
+{% endblock %}
