@@ -1,0 +1,22 @@
+{% extends 'base.html' %}
+{% block title %}{{ book.title }} - AI Bookstore{% endblock %}
+{% block content %}
+<article>
+  <h1>{{ book.title }}</h1>
+  <img src="{{ book.cover_image_url }}" alt="{{ book.title }}" class="cover">
+  <p><strong>Author:</strong> {{ book.author }}</p>
+  <p><strong>ISBN:</strong> {{ book.isbn }}</p>
+  <p><strong>Category:</strong> {{ book.category.name }}</p>
+  <p><strong>Language:</strong> {{ book.language }}</p>
+  <p><strong>Price:</strong> ${{ book.price }}</p>
+  <p>{{ book.description }}</p>
+  <p><strong>{{ _('Average rating') }}:</strong> {{ book.average_rating }} ({{ book.review_count }} {{ _('reviews') }})</p>
+  {% if current_user.is_authenticated %}
+  <form method="post" action="{{ url_for('web.cart_add', book_id=book.id) }}">
+    <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+    <input type="number" min="1" value="1" name="quantity">
+    <button type="submit">{{ _('Add to Cart') }}</button>
+  </form>
+  {% endif %}
+</article>
+{% endblock %}

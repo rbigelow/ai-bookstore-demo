@@ -1,0 +1,15 @@
+{% extends 'base.html' %}
+{% block title %}Register - AI Bookstore{% endblock %}
+{% block content %}
+<h1>{{ _('Create account') }}</h1>
+<form method="post">
+  <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+  <label for="full_name">{{ _('Full name') }}</label>
+  <input id="full_name" name="full_name" required>
+  <label for="email">Email</label>
+  <input id="email" name="email" type="email" required>
+  <label for="password">{{ _('Password') }}</label>
+  <input id="password" name="password" type="password" required>
+  <button type="submit">{{ _('Register') }}</button>
+</form>
+{% endblock %}
